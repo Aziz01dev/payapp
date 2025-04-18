@@ -16,6 +16,7 @@ class _HomePageState extends State<HomePage> {
   final nameController = TextEditingController();
   final amountController = TextEditingController();
   final dayController = TextEditingController();
+  final cardpriceController = TextEditingController();
   bool _isLoading = false;
 
   @override
@@ -26,6 +27,7 @@ class _HomePageState extends State<HomePage> {
       nameController.text = widget.oldAmount!.title;
       amountController.text = widget.oldAmount!.price.toString();
       dayController.text = widget.oldAmount!.day;
+      cardpriceController.text = widget.oldAmount!.cardprice;
     }
   }
 
@@ -47,14 +49,21 @@ class _HomePageState extends State<HomePage> {
       });
       final title = nameController.text.trim();
       final day = dayController.text.trim();
+      final cardprice = cardpriceController.text.trim();
       final price = int.tryParse(amountController.text.trim()) ?? 0;
       if (widget.oldAmount == null) {
-        await payappViewModel.addItem(title: title, price: price, day: day);
+        await payappViewModel.addItem(
+          title: title,
+          price: price,
+          day: day,
+          cardprice: cardprice,
+        );
       } else {
         final updatedItem = widget.oldAmount!.copyWith(
           title: title,
           price: price,
           day: day,
+          cardpice: cardprice,
         );
         await payappViewModel.editApp(updatedItem);
       }
@@ -72,6 +81,7 @@ class _HomePageState extends State<HomePage> {
     nameController.dispose();
     amountController.dispose();
     dayController.dispose();
+    cardpriceController.dispose();
     super.dispose();
   }
 
@@ -83,15 +93,18 @@ class _HomePageState extends State<HomePage> {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {},
         ),
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(left: 80, top: 40),
-              child: Text("20000 so'm", style: TextStyle(fontSize: 30)),
+              child: Text(
+                "${cardpriceController.text} so'm",
+                style: TextStyle(fontSize: 30),
+              ),
             ),
             TextButton(
               onPressed: () {
@@ -104,11 +117,11 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text("Balans"),
-                            const SizedBox(height: 20),
+                            Text("Balans"),
+                            SizedBox(height: 20),
                             TextFormField(
-                              controller: amountController,
-                              decoration: const InputDecoration(
+                              controller: cardpriceController,
+                              decoration: InputDecoration(
                                 border: OutlineInputBorder(),
                                 hintText: "Miqdor",
                               ),
@@ -156,18 +169,9 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Row(
                       children: [
-                        const Text(
-                          "Balance",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        const SizedBox(width: 10),
-                        const Text(
-                          "100000",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        const Spacer(),
-                        const Text(
-                          "20 %",
+                        Spacer(),
+                        Text(
+                          "${cardpriceController.text} %",
                           style: TextStyle(color: Colors.white),
                         ),
                       ],
@@ -285,22 +289,36 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 10),
                   ListView.builder(
                     shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
+                    physics: NeverScrollableScrollPhysics(),
                     itemCount: payappViewModel.nextItem.length,
                     itemBuilder: (context, index) {
                       final item = payappViewModel.nextItem[index];
-                      return ListTile(
-                        title: Text(item.title),
-                        subtitle: Text(item.day),
-                        trailing: Text("${item.price} so'm"),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => HomePage(oldAmount: item),
-                            ),
+                      return Dismissible(
+                        onDismissed: (direction) {
+                          payappViewModel.deleteItem(
+                            payappViewModel.nextItem[index].id,
                           );
                         },
+                        background: Container(
+                          padding: EdgeInsets.only(right: 20),
+                          color: Colors.red,
+                          child: Icon(Icons.delete),
+                          alignment: Alignment.centerRight,
+                        ),
+                        key: Key(index.toString()),
+                        child: ListTile(
+                          title: Text(item.title),
+                          subtitle: Text(item.day),
+                          trailing: Text("${item.price} so'm"),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => HomePage(oldAmount: item),
+                              ),
+                            );
+                          },
+                        ),
                       );
                     },
                   ),

@@ -24,9 +24,10 @@ class PayappViewModel {
     required String title,
     required int price,
     required String day,
+    required String cardprice,
   }) async {
     try {
-      final newItem = PayAppModel(id: 0, title: title, price: price, day: day);
+      final newItem = PayAppModel(id: 0, title: title, price: price, day: day,cardprice: cardprice);
       final id = await _localDatabase.insert(newItem);
       nextItem.add(newItem.copyWith(id: id));
     } catch (e) {

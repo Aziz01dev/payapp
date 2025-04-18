@@ -36,7 +36,8 @@ class LocalDatabase {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           title TEXT NOT NULL,
           price INTEGER NOT NULL,
-          day TEXT NOT NULL
+          day TEXT NOT NULL,
+          cardprice TEXT NULL
         )
       """);
     } catch (e, s) {
