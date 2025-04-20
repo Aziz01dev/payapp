@@ -156,7 +156,7 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
-            onPressed: _showSearch, // Qidiruvni ochish
+            onPressed: _showSearch, 
           ),
           IconButton(
             icon: const Icon(Icons.arrow_forward_ios),
