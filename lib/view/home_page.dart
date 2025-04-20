@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:pay_app/models/pay_app_model.dart';
 import 'package:pay_app/view_models/payapp_viewmodel.dart';
 
@@ -18,6 +19,8 @@ class _HomePageState extends State<HomePage> {
   final dayController = TextEditingController();
   final cardpriceController = TextEditingController();
   bool _isLoading = false;
+  DateTime _selectedDate = DateTime.now();
+  String _percentageText = "0 %";
 
   @override
   void initState() {
@@ -27,19 +30,50 @@ class _HomePageState extends State<HomePage> {
       nameController.text = widget.oldAmount!.title;
       amountController.text = widget.oldAmount!.price.toString();
       dayController.text = widget.oldAmount!.day;
-      cardpriceController.text = widget.oldAmount!.cardprice;
     }
+    cardpriceController.addListener(_calculatePercentage);
+  }
+
+  void _calculatePercentage() {
+    final value = int.tryParse(cardpriceController.text.trim()) ?? 0;
+    final percentage = (value * 0.2).toInt();
+    setState(() {
+      _percentageText = "$percentage";
+    });
   }
 
   void showCalendar() async {
     final result = await showDatePicker(
       context: context,
-      firstDate: DateTime.now(),
+      firstDate: DateTime(2000),
       lastDate: DateTime(3000),
+      initialDate: _selectedDate,
     );
     if (result != null) {
-      dayController.text = result.toString();
+      setState(() {
+        _selectedDate = result;
+        dayController.text = DateFormat('yyyy-MM-dd').format(result);
+      });
     }
+  }
+
+  void goToPreviousDay() {
+    setState(() {
+      _selectedDate = _selectedDate.subtract(const Duration(days: 1));
+    });
+  }
+
+  void goToNextDay() {
+    setState(() {
+      _selectedDate = _selectedDate.add(const Duration(days: 1));
+    });
+  }
+
+  List<PayAppModel> getFilteredItems() {
+    final selectedDateString = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    return payappViewModel.nextItem.where((item) {
+      return item.day.startsWith(selectedDateString);
+    }).toList();
   }
 
   void save() async {
@@ -49,21 +83,24 @@ class _HomePageState extends State<HomePage> {
       });
       final title = nameController.text.trim();
       final day = dayController.text.trim();
-      final cardprice = cardpriceController.text.trim();
       final price = int.tryParse(amountController.text.trim()) ?? 0;
+      print("Saving: title=$title, price=$price, day=$day");
       if (widget.oldAmount == null) {
-        await payappViewModel.addItem(
+        final success = await payappViewModel.addItem(
           title: title,
           price: price,
           day: day,
-          cardprice: cardprice,
         );
+        if (!success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Xarajat qo‘shishda xato yuz berdi")),
+          );
+        }
       } else {
         final updatedItem = widget.oldAmount!.copyWith(
           title: title,
           price: price,
           day: day,
-          cardpice: cardprice,
         );
         await payappViewModel.editApp(updatedItem);
       }
@@ -74,6 +111,21 @@ class _HomePageState extends State<HomePage> {
         Navigator.pop(context, true);
       }
     }
+  }
+
+  void _showSearch() {
+    showSearch(
+      context: context,
+      delegate: PayAppSearchDelegate(
+        payappViewModel.nextItem,
+        onItemTapped: (item) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => HomePage(oldAmount: item)),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -89,21 +141,37 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Fevral, 2025"),
+        title: GestureDetector(
+          onTap: showCalendar,
+          child: Text(
+            DateFormat('MMMM, yyyy').format(_selectedDate),
+            style: const TextStyle(fontSize: 20),
+          ),
+        ),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () {},
+          onPressed: goToPreviousDay,
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: _showSearch, // Qidiruvni ochish
+          ),
+          IconButton(
+            icon: const Icon(Icons.arrow_forward_ios),
+            onPressed: goToNextDay,
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
             Padding(
-              padding: EdgeInsets.only(left: 80, top: 40),
+              padding: const EdgeInsets.only(left: 80, top: 40),
               child: Text(
                 "${cardpriceController.text} so'm",
-                style: TextStyle(fontSize: 30),
+                style: const TextStyle(fontSize: 30),
               ),
             ),
             TextButton(
@@ -117,11 +185,11 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text("Balans"),
-                            SizedBox(height: 20),
+                            const Text("Balans"),
+                            const SizedBox(height: 20),
                             TextFormField(
                               controller: cardpriceController,
-                              decoration: InputDecoration(
+                              decoration: const InputDecoration(
                                 border: OutlineInputBorder(),
                                 hintText: "Miqdor",
                               ),
@@ -145,7 +213,15 @@ class _HomePageState extends State<HomePage> {
                           child: const Text("Bekor qilish"),
                         ),
                         TextButton(
-                          onPressed: _isLoading ? null : save,
+                          onPressed:
+                              _isLoading
+                                  ? null
+                                  : () {
+                                    if (_formKey.currentState!.validate()) {
+                                      setState(() {});
+                                      Navigator.pop(context);
+                                    }
+                                  },
                           child:
                               _isLoading
                                   ? const CircularProgressIndicator()
@@ -169,10 +245,10 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Row(
                       children: [
-                        Spacer(),
+                        const Spacer(),
                         Text(
-                          "${cardpriceController.text} %",
-                          style: TextStyle(color: Colors.white),
+                          _percentageText,
+                          style: const TextStyle(color: Colors.white),
                         ),
                       ],
                     ),
@@ -289,23 +365,21 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 10),
                   ListView.builder(
                     shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    itemCount: payappViewModel.nextItem.length,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: getFilteredItems().length,
                     itemBuilder: (context, index) {
-                      final item = payappViewModel.nextItem[index];
+                      final item = getFilteredItems()[index];
                       return Dismissible(
                         onDismissed: (direction) {
-                          payappViewModel.deleteItem(
-                            payappViewModel.nextItem[index].id,
-                          );
+                          payappViewModel.deleteItem(item.id);
                         },
                         background: Container(
-                          padding: EdgeInsets.only(right: 20),
+                          padding: const EdgeInsets.only(right: 20),
                           color: Colors.red,
-                          child: Icon(Icons.delete),
+                          child: const Icon(Icons.delete),
                           alignment: Alignment.centerRight,
                         ),
-                        key: Key(index.toString()),
+                        key: Key(item.id.toString()),
                         child: ListTile(
                           title: Text(item.title),
                           subtitle: Text(item.day),
@@ -328,6 +402,81 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class PayAppSearchDelegate extends SearchDelegate {
+  final List<PayAppModel> items;
+  final Function(PayAppModel) onItemTapped;
+
+  PayAppSearchDelegate(this.items, {required this.onItemTapped});
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear),
+        onPressed: () {
+          query = '';
+        },
+      ),
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () {
+        close(context, null);
+      },
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    final results =
+        items.where((item) {
+          return item.title.toLowerCase().contains(query.toLowerCase());
+        }).toList();
+
+    return ListView.builder(
+      itemCount: results.length,
+      itemBuilder: (context, index) {
+        final item = results[index];
+        return ListTile(
+          title: Text(item.title),
+          subtitle: Text(item.day),
+          trailing: Text("${item.price} so'm"),
+          onTap: () {
+            onItemTapped(item);
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    final suggestions =
+        items.where((item) {
+          return item.title.toLowerCase().contains(query.toLowerCase());
+        }).toList();
+
+    return ListView.builder(
+      itemCount: suggestions.length,
+      itemBuilder: (context, index) {
+        final item = suggestions[index];
+        return ListTile(
+          title: Text(item.title),
+          subtitle: Text(item.day),
+          trailing: Text("${item.price} so'm"),
+          onTap: () {
+            onItemTapped(item);
+          },
+        );
+      },
     );
   }
 }

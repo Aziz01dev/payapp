@@ -20,18 +20,19 @@ class PayappViewModel {
     nextItem = await _localDatabase.get();
   }
 
-  Future<void> addItem({
+  Future<bool> addItem({
     required String title,
     required int price,
     required String day,
-    required String cardprice,
   }) async {
     try {
-      final newItem = PayAppModel(id: 0, title: title, price: price, day: day,cardprice: cardprice);
+      final newItem = PayAppModel(id: 0, title: title, price: price, day: day);
       final id = await _localDatabase.insert(newItem);
       nextItem.add(newItem.copyWith(id: id));
+      return true; 
     } catch (e) {
       print("Error adding item: $e");
+      return false; 
     }
   }
 
